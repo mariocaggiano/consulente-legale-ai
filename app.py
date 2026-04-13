@@ -1,7 +1,7 @@
 """
 Consulente Legale AI  —  v2.0
 ================================
-App Streamlit per consulenza giuridica italiana basata su Google Gemini 1.5 Flash
+App Streamlit per consulenza giuridica italiana basata su Google Gemini 2.0 Flash
 con Google Search Grounding per il recupero in tempo reale della normativa vigente.
 
 Fix applicati (v2.0):
@@ -11,7 +11,7 @@ Fix applicati (v2.0):
   BUG-003 [HIGH]     Guard su response.candidates prima di accedere a .text
   BUG-004 [MEDIUM]   Validazione lunghezza input (MAX_INPUT_CHARS)
   BUG-005 [MEDIUM]   Spinner spostato fuori da chat_message per corretto rendering
-  BUG-006 [LOW]      Rimossa dipendenza da immagine Wikipedia (URL esterno fragile)
+  BUG-006 [LOW]      Rimossa dipendenza da immagine Wikipedia (URL sterno fragile)
 """
 
 from __future__ import annotations
@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 # ─────────────────────────────────────────────────────────────
 # Costanti
 # ─────────────────────────────────────────────────────────────
-MODEL_NAME       = "gemini-1.5-flash"
+MODEL_NAME       = "gemini-2.0-flash"
 APP_TITLE        = "Consulente Legale AI"
 APP_SUBTITLE     = "Analisi giuridica aggiornata sul diritto italiano vigente"
 MAX_INPUT_CHARS  = 4_000   # FIX BUG-004: limite caratteri per messaggio utente
@@ -442,7 +442,7 @@ def get_api_key() -> Optional[str]:
 
 def create_model(api_key: str) -> genai.GenerativeModel:
     """
-    Crea e configura il modello Gemini 1.5 Flash con Google Search Grounding.
+    Crea e configura il modello Gemini 2.0 Flash con Google Search Grounding.
 
     FIX BUG-002: eliminato start_chat(). Il grounding tool non è compatibile con
     la Chat API di Gemini. La conversazione multi-turno viene ora gestita tramite
@@ -450,20 +450,19 @@ def create_model(api_key: str) -> genai.GenerativeModel:
     """
     genai.configure(api_key=api_key)
 
-    search_tool = genai.protos.Tool(
-        google_search_retrieval=genai.protos.GoogleSearchRetrieval(
-            dynamic_retrieval_config=genai.protos.DynamicRetrievalConfig(
-                mode=genai.protos.DynamicRetrievalConfig.Mode.MODE_DYNAMIC,
-                # Soglia bassa: il modello cerca spesso → norme sempre aggiornate
-                dynamic_threshold=0.2,
-            )
+    # gemini-2.0-flash usa google_search (non google_search_retrieval)
+    try:
+        search_tool = genai.protos.Tool(
+            google_search=genai.protos.GoogleSearch()
         )
-    )
+        tools_list = [search_tool]
+    except Exception:
+        tools_list = []
 
     model = genai.GenerativeModel(
         model_name=MODEL_NAME,
         system_instruction=SYSTEM_PROMPT,
-        tools=[search_tool],
+        tools=tools_list,
         generation_config=genai.types.GenerationConfig(
             temperature=0.2,
             max_output_tokens=4096,
@@ -594,7 +593,7 @@ def _format_api_error(error_str: str) -> str:
     if "model" in e and "not found" in e:
         return (
             "❌ **Modello non trovato.**\n\n"
-            "Gemini 1.5 Flash non è disponibile con questa API key. "
+            "Gemini 2.0 Flash non è disponibile con questa API key. "
             "Verifica che la key abbia accesso ai modelli su Google AI Studio."
         )
     return (
@@ -617,7 +616,7 @@ def render_sidebar() -> None:
             "<h2 style='margin:0.3rem 0 0; font-size:1.15rem; font-weight:600;'>"
             "Consulente Legale AI</h2>"
             "<p style='font-size:0.7rem; opacity:0.65; margin:0;'>"
-            "Powered by Google Gemini 1.5 Flash</p>"
+            "Powered by Google Gemini 2.0 Flash</p>"
             "</div>",
             unsafe_allow_html=True,
         )
