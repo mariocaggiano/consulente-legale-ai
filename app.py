@@ -434,30 +434,6 @@ def get_api_key() -> Optional[str]:
     if sidebar_key:
         return sidebar_key
     return secrets_key or None
-�──────
-# Gestione API Key
-# ─────────────────────────────────────────────────────────────
-
-def get_api_key() -> Optional[str]:
-    """
-    Recupera la API key con priorità:
-    1. Input dalla sidebar (deploy pubblici)
-    2. st.secrets["GEMINI_API_KEY"] (deploy privati su Streamlit Cloud)
-    3. None
-
-    FIX BUG-001: sostituito 'str | None' con Optional[str] per Python 3.9 compat.
-    """
-    secrets_key: Optional[str] = None
-    try:
-        secrets_key = st.secrets.get("GEMINI_API_KEY", None)
-    except Exception:
-        pass  # secrets non configurati: normale in sviluppo locale
-
-    sidebar_key: str = st.session_state.get("sidebar_api_key", "").strip()
-
-    if sidebar_key:
-        return sidebar_key
-    return secrets_key or None
 
 
 # ─────────────────────────────────────────────────────────────
