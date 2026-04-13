@@ -450,14 +450,9 @@ def create_model(api_key: str) -> genai.GenerativeModel:
     """
     genai.configure(api_key=api_key)
 
-    # gemini-2.0-flash usa google_search (non google_search_retrieval)
-    try:
-        search_tool = genai.protos.Tool(
-            google_search=genai.protos.GoogleSearch()
-        )
-        tools_list = [search_tool]
-    except Exception:
-        tools_list = []
+    # Google Search Grounding disabilitato: non supportato su piano free
+    # Usa il modello base senza ricerca web
+    tools_list = []
 
     model = genai.GenerativeModel(
         model_name=MODEL_NAME,
