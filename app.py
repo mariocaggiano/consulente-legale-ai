@@ -10,7 +10,7 @@ Fix applicati (v2.0):
            generate_content() + history manuale (unico approccio supportato)
   BUG-003 [HIGH]     Guard su response.candidates prima di accedere a .text
   BUG-004 [MEDIUM]   Validazione lunghezza input (MAX_INPUT_CHARS)
-  BUG-005 [MEDIUM]   Spinner spostato fuori da chat_message per corretto rendering
+  BUG-005 [MEDIUM]   Spinner spostato fuori da chat_message per crretto rendering
   BUG-006 [LOW]      Rimossa dipendenza da immagine Wikipedia (URL sterno fragile)
 """
 
@@ -575,8 +575,16 @@ def _format_api_error(error_str: str) -> str:
             "Creane una gratuita su [Google AI Studio](https://aistudio.google.com/app/apikey)."
         )
     if any(k in e for k in ["quota", "rate_limit", "resource_exhausted"]):
+        # Distingue tra limite giornaliero e limite al minuto
+        if "free_tier" in e or "limit: 0" in e or "daily" in e or "per day" in e:
+            return (
+                "❌ **Quota giornaliera esaurita.**\n\n"
+                "Hai raggiunto il limite giornaliero del piano gratuito Gemini (1.500 richieste/giorno). "
+                "La quota si azzera ogni giorno alle ore 09:00 circa (ora italiana). "
+                "Riprova domani mattina."
+            )
         return (
-            "❌ **Limite di quota raggiunto.**\n\n"
+            "❌ **Limite di velocità raggiunto.**\n\n"
             "Hai superato le 15 richieste/min del piano gratuito. "
             "Attendi 60 secondi e riprova."
         )
