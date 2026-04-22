@@ -102,6 +102,17 @@ Con costi approssimativi, tempi medi e probabilità di successo per ciascuna.]
 [Segnala SEMPRE scadenze critiche: prescrizione, decadenza, termini processuali. \
 Indica la data limite entro cui agire per non perdere il diritto.]
 
+## 💼 Il Mio Approccio al Caso
+[Questa sezione è OBBLIGATORIA. Parla in prima persona come avvocato con oltre 20 anni \
+di esperienza. Vai oltre la fredda analisi normativa: dai la TUA lettura personale del caso.
+Includi:
+- Una valutazione diretta e franca delle probabilità di successo ("Personalmente ritengo che...")
+- La strategia che tu stesso seguiresti se fossi l'avvocato del cliente
+- Gli elementi che ti preoccupano o che non ti convincono del tutto
+- Il consiglio pratico immediato che daresti seduto di fronte al cliente
+Usa un tono autorevole ma umano, come in una conversazione nello studio legale. \
+Evita il linguaggio burocratico. Sii diretto.]
+
 ---
 
 > **⚠️ DISCLAIMER LEGALE — LEGGERE ATTENTAMENTE**
@@ -662,14 +673,14 @@ def _format_api_error(error_str: str) -> str:
         return (
             "❌ **API Key non valida.**\n\n"
             "Verifica la chiave nella sidebar. "
-            "Creane una gratuita su [Google AI Studio](https://aistudio.google.com/app/apikey)."
+            "Creane una gratuita su [AI Studio](https://aistudio.google.com/app/apikey)."
         )
     if any(k in e for k in ["quota", "rate_limit", "resource_exhausted"]):
         # Distingue tra limite giornaliero e limite al minuto
         if "free_tier" in e or "limit: 0" in e or "daily" in e or "per day" in e:
             return (
                 "❌ **Quota giornaliera esaurita.**\n\n"
-                "Hai raggiunto il limite giornaliero del piano gratuito Gemini (1.500 richieste/giorno). "
+                "Hai raggiunto il limite giornaliero del piano gratuito (500 richieste/giorno). "
                 "La quota si azzera ogni giorno alle ore 09:00 circa (ora italiana). "
                 "Riprova domani mattina."
             )
@@ -687,7 +698,7 @@ def _format_api_error(error_str: str) -> str:
         return (
             "❌ **Modello non trovato.**\n\n"
             "Gemini 2.0 Flash non è disponibile con questa API key. "
-            "Verifica che la key abbia accesso ai modelli su Google AI Studio."
+            "Verifica che la key sia valida su [AI Studio](https://aistudio.google.com/app/apikey)."
         )
     return (
         f"❌ **Errore API:** {error_str}\n\n"
@@ -714,7 +725,7 @@ def render_sidebar() -> None:
         st.divider()
 
         # ── API Key ──
-        st.markdown("#### 🔑 API Key Google Gemini")
+        st.markdown("#### 🔑 API Key")
 
         has_secrets = False
         try:
@@ -728,7 +739,7 @@ def render_sidebar() -> None:
             st.markdown(
                 "<small>Inserisci la tua chiave <b>gratuita</b> da "
                 "<a href='https://aistudio.google.com/app/apikey' target='_blank'>"
-                "Google AI Studio</a>.</small>",
+                "AI Studio</a>.</small>",
                 unsafe_allow_html=True,
             )
             st.text_input(
@@ -898,9 +909,9 @@ def main() -> None:
     if not api_key:
         render_welcome_screen()
         st.info(
-            "👈 **Inserisci la tua API Key Google Gemini nella sidebar** per iniziare.\n\n"
+            "👈 **Inserisci la tua API Key nella sidebar** per iniziare.\n\n"
             "La chiave è gratuita su "
-            "[Google AI Studio](https://aistudio.google.com/app/apikey).",
+            "[AI Studio](https://aistudio.google.com/app/apikey).",
             icon="🔑",
         )
         st.markdown("<div class='legal-footer'>Strumento informativo — non sostituisce un avvocato</div>", unsafe_allow_html=True)
@@ -910,7 +921,7 @@ def main() -> None:
     try:
         model = get_or_create_model(api_key)
     except Exception as e:
-        st.error(f"❌ Impossibile avviare il modello Gemini: {e}")
+        st.error(f"❌ Impossibile avviare il servizio: {e}")
         logger.error(f"Errore init modello: {e}")
         return
 
