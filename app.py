@@ -504,15 +504,26 @@ def extract_text(response: genai.types.GenerateContentResponse) -> str:
     Estrae il testo dalla risposta Gemini in modo sicuro.
 
     FIX BUG-003: accede prima a candidates per evitare ValueError su risposte bloccate.
+    FIX gemini-2.5: salta le "thinking parts" (thought=True) e restituisce solo il testo finale.
     """
     try:
-        # Percorso primario: candidates[0].content.parts[0].text
+        # Percorso primario: candidates[0].content.parts
         if (
             response.candidates
             and response.candidates[0].content
             and response.candidates[0].content.parts
         ):
-            return response.candidates[0].content.parts[0].text
+            parts = response.candidates[0].content.parts
+            # gemini-2.5 include parti di "pensiero" interne (thought=True): le saltiamo
+            for part in parts:
+                if getattr(part, "thought", False):
+                    continue
+                if hasattr(part, "text") and part.text:
+                    return part.text
+            # Fallback: primo part con testo
+            for part in parts:
+                if hasattr(part, "text") and part.text:
+                    return part.text
 
         # Fallback: response.text (può lanciare se bloccato)
         return response.text
@@ -618,8 +629,6 @@ def render_sidebar() -> None:
             "<span style='font-size:3rem;'>⚖️</span>"
             "<h2 style='margin:0.3rem 0 0; font-size:1.15rem; font-weight:600;'>"
             "Consulente Legale AI</h2>"
-            "<p style='font-size:0.7rem; opacity:0.65; margin:0;'>"
-            "Powered by Google Gemini 2.0 Flash</p>"
             "</div>",
             unsafe_allow_html=True,
         )
@@ -800,7 +809,7 @@ def main() -> None:
         f"    <h1>{APP_TITLE}</h1>"
         f"    <p>{APP_SUBTITLE}</p>"
         "  </div>"
-        "  <div class='header-badge'>🔍 Powered by Google Gemini</div>"
+        "  <div class='header-badge'>🔍 Ricerca normativa in tempo reale</div>"
         "</div>",
         unsafe_allow_html=True,
     )
@@ -812,8 +821,7 @@ def main() -> None:
         st.info(
             "👈 **Inserisci la tua API Key Google Gemini nella sidebar** per iniziare.\n\n"
             "La chiave è gratuita su "
-            "[Google AI Studio](https://aistudio.google.com/app/apikey) "
-            "(fino a 15 richieste/min nel piano free).",
+            "[Google AI Studio](https://aistudio.google.com/app/apikey).",
             icon="🔑",
         )
         st.markdown("<div class='legal-footer'>Strumento informativo — non sostituisce un avvocato</div>", unsafe_allow_html=True)
