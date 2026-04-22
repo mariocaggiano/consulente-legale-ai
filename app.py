@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 # ─────────────────────────────────────────────────────────────
 # Costanti
 # ─────────────────────────────────────────────────────────────
-MODEL_NAME       = "gemini-2.0-flash"
+MODEL_NAME       = "gemini-2.5-flash"
 APP_TITLE        = "Consulente Legale AI"
 APP_SUBTITLE     = "Analisi giuridica aggiornata sul diritto italiano vigente"
 MAX_INPUT_CHARS  = 4_000   # FIX BUG-004: limite caratteri per messaggio utente
