@@ -546,24 +546,13 @@ def extract_text(response: genai.types.GenerateContentResponse) -> str:
 
 def send_message(user_input: str, model: genai.GenerativeModel) -> str:
     """
-    Invia un messaggio al modello usando generate_content() + history manuale.
-    Supporta conversazioni multi-turno con Google Search Grounding attivo.
-
-    FIX BUG-002: usa generate_content() invece di start_chat().
-    FIX BUG-003: usa extract_text() per accesso sicuro alla risposta.
+    Invia un messaggio al modello (non-streaming, usato come fallback).
     """
     try:
-        # Costruisce la history dalla sessione (esclude il messaggio corrente,
-        # che verrà aggiunto a messages solo dopo la risposta)
         history = build_history(st.session_state.messages)
-
-        # Aggiunge il messaggio corrente
         history.append({"role": "user", "parts": [{"text": user_input}]})
-
-        # Genera la risposta (il grounding funziona correttamente qui)
         response = model.generate_content(history)
         return extract_text(response)
-
     except genai.types.BlockedPromptException:
         logger.warning("Prompt bloccato dai filtri Gemini")
         return (
@@ -574,6 +563,96 @@ def send_message(user_input: str, model: genai.GenerativeModel) -> str:
         error_str = str(e)
         logger.error(f"Errore Gemini API: {error_str}")
         return _format_api_error(error_str)
+
+
+# Messaggi di stato mostrati in rotazione durante la fase di elaborazione
+_THINKING_MESSAGES = [
+    "🔍 Analizzando il caso...",
+    "📚 Consultando le fonti normative vigenti...",
+    "⚖️ Elaborando il parere giuridico...",
+    "📝 Verificando la normativa aggiornata...",
+    "🔎 Ricercando precedenti e disposizioni rilevanti...",
+]
+
+
+def send_message_streaming(
+    user_input: str,
+    model: genai.GenerativeModel,
+    placeholder,
+) -> str:
+    """
+    Versione streaming di send_message.
+    - Durante la fase di "thinking" di gemini-2.5 mostra messaggi rotativi.
+    - Appena arriva il primo token di testo lo streamma nel placeholder in tempo reale.
+    - Restituisce il testo completo per salvarlo in session_state.
+    """
+    import time
+
+    try:
+        history = build_history(st.session_state.messages)
+        history.append({"role": "user", "parts": [{"text": user_input}]})
+
+        response_stream = model.generate_content(history, stream=True)
+
+        full_text = ""
+        thinking_idx = 0
+        last_rotate = time.time()
+        first_text = True
+
+        for chunk in response_stream:
+            try:
+                if not (
+                    chunk.candidates
+                    and chunk.candidates[0].content
+                    and chunk.candidates[0].content.parts
+                ):
+                    continue
+
+                for part in chunk.candidates[0].content.parts:
+                    # Parte di "thinking" interna → ruota il messaggio di stato
+                    if getattr(part, "thought", False):
+                        now = time.time()
+                        if now - last_rotate > 2.5:
+                            placeholder.markdown(
+                                f"*{_THINKING_MESSAGES[thinking_idx % len(_THINKING_MESSAGES)]}*"
+                            )
+                            thinking_idx += 1
+                            last_rotate = now
+                        continue
+
+                    # Testo reale → streamma nel placeholder
+                    if hasattr(part, "text") and part.text:
+                        if first_text:
+                            first_text = False
+                        full_text += part.text
+                        placeholder.markdown(full_text + " ▌")
+
+            except Exception:
+                continue
+
+        # Rimozione cursore finale
+        if full_text:
+            placeholder.markdown(full_text)
+            return full_text
+
+        result = "⚠️ Risposta non disponibile. Riprova."
+        placeholder.markdown(result)
+        return result
+
+    except genai.types.BlockedPromptException:
+        logger.warning("Prompt bloccato dai filtri Gemini")
+        msg = (
+            "❌ La richiesta è stata bloccata dai filtri di sicurezza. "
+            "Prova a riformularla in modo più neutro."
+        )
+        placeholder.markdown(msg)
+        return msg
+    except Exception as e:
+        error_str = str(e)
+        logger.error(f"Errore Gemini API (streaming): {error_str}")
+        msg = _format_api_error(error_str)
+        placeholder.markdown(msg)
+        return msg
 
 
 def _format_api_error(error_str: str) -> str:
@@ -857,13 +936,13 @@ def main() -> None:
         with st.chat_message("user", avatar="👤"):
             st.markdown(user_input)
 
-        # FIX BUG-005: spinner FUORI da chat_message per rendering corretto
-        with st.spinner("🔍 Analizzando il caso e consultando le fonti normative..."):
-            ai_response = send_message(user_input, model)
-
-        # Mostra e salva risposta AI
+        # Risposta AI in streaming: il testo appare man mano che viene generato
         with st.chat_message("assistant", avatar="⚖️"):
-            st.markdown(ai_response)
+            placeholder = st.empty()
+            # Messaggio iniziale mentre il modello elabora
+            placeholder.markdown(f"*{_THINKING_MESSAGES[0]}*")
+            ai_response = send_message_streaming(user_input, model, placeholder)
+
         st.session_state.messages.append({"role": "assistant", "content": ai_response})
 
     # ── Footer ──
